@@ -1,4 +1,6 @@
 #!/bin/sh
+# Fallback for compose.ssh.yaml only. The current deployment uses direct HTTPS;
+# follow docs/deployment.md before switching the server back to SSH-only mode.
 set -eu
 
 PROJECT_ROOT=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
@@ -13,7 +15,7 @@ if [ ! -f "$HCC_SSH_KEY" ] || [ ! -f "$HCC_KNOWN_HOSTS" ]; then
   exit 1
 fi
 
-echo '连接 ThinkBook 控制台：http://localhost:18000'
+echo 'SSH-only 回退模式：http://localhost:18000（当前 HTTPS 部署请使用 https://ssh.hemu-server.top:20443）'
 echo '保持此终端运行；Ctrl+C 断开查看连接，ThinkBook 上的采集服务仍会继续运行。'
 exec ssh -nNT -F /dev/null \
   -i "$HCC_SSH_KEY" \

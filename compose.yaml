@@ -27,7 +27,10 @@ services:
       timeout: 5s
       retries: 3
   https:
-    image: caddy:2-alpine
+    image: ${HCC_HTTPS_IMAGE:-hemu-hcc-https:local}
+    build:
+      context: .
+      dockerfile: Dockerfile.https
     restart: unless-stopped
     ports:
       - ${HCC_BIND_ADDRESS:-127.0.0.1}:${HCC_HTTPS_PORT:-8443}:8443

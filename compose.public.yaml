@@ -1,0 +1,27 @@
+# Add to compose.ssh.yaml and compose.proxy.yaml for this project's HTTPS listener.
+services:
+  https:
+    image: ${HCC_HTTPS_IMAGE:-hemu-hcc-https:local}
+    build:
+      context: .
+      dockerfile: Dockerfile.https
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    ports:
+      - ${HCC_PUBLIC_BIND_ADDRESS:-0.0.0.0}:${HCC_HTTPS_PORT:-20443}:20443
+    environment:
+      HCC_WEB_HOST: ${HCC_WEB_HOST:?Set the actual console hostname}
+    volumes:
+      - ./config/Caddyfile.selfsigned:/etc/caddy/Caddyfile:ro
+      - ${HCC_TLS_PATH:-./config/tls}:/etc/hcc-tls:ro
+      - hcc_caddy_data:/data
+      - hcc_caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  hcc_caddy_data:
+  hcc_caddy_config:

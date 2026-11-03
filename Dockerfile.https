@@ -1,0 +1,4 @@
+FROM caddy:2-alpine
+# Replacing the binary strips its low-port file capability. These deployments
+# listen on high ports and run with an empty capability bounding set.
+RUN cp /usr/bin/caddy /usr/bin/caddy-no-cap && mv /usr/bin/caddy-no-cap /usr/bin/caddy

@@ -56,4 +56,16 @@ SSH 集成测试仅使用本机回环地址临时 SSH 服务：专用 Ed25519 �
 - 迁移保留两台设备 ID 与历史，清除迁移会话。ThinkBook 自身改走 `host.docker.internal:22`，NAS 仍为内网直连；已验证自连接主机密钥与此前 ThinkBook 一致。
 - Docker 已开机启用，容器设置 `unless-stopped`；实际重启本项目容器后，两台设备重新采集成功，未重启 ThinkBook 或既有业务容器。
 
-当前限制：控制台独立公网 HTTPS 域名、证书与自定义端口尚未配置，当前使用 SSH 加密访问；NAS 的 Docker / journal 读取权限、实际 Git 仓库路径和健康检查 URL 尚未配置。未更改 DNS、路由器、防火墙、SSH 服务或既有反向代理配置。
+## 独立自签名 HTTPS
+
+- 用户确认 19443 属于另一个项目，选择本项目使用 TCP 20443，并自行添加路由器转发；同时选择接受自签名证书提示，不使用阿里云 AccessKey。
+- 根域名暂无公网 A / AAAA 记录，改为复用现有 `ssh.hemu-server.top` 解析，入口 `https://ssh.hemu-server.top:20443`；没有修改 DNS 或固定公网 IP。
+- 在 ThinkBook 本地生成独立 EC 证书与私钥，证书有效至 2027-11-03；TLS 目录 0700、文件 0600、仅 HTTPS 容器只读挂载，私钥没有传到 Mac 或 Git。
+- 使用官方 Caddy 派生镜像，移除二进制低端口 file capability；容器丢弃全部 capabilities 后能正常启动并监听 20443。应用和 HTTPS 容器均只读根文件系统，保持 `unless-stopped`。
+- Caddy 配置验证通过；内网实际 TLS 1.3 健康请求返回 200。通过 SSH 转发并显式信任项目证书，严格核验域名与证书后，真实 HTML、登录、Secure / HttpOnly / SameSite 会话、两台设备在线数据和历史均通过。
+- 未认证设备请求 401、跨来源请求 403、未配置的 HTTPS Host 421。测试没有使用 `verify=False`，没有安装系统信任根或自动跳过浏览器证书警告。
+- 已有 `digital-life-caddy.service` 仍为 active、MainPID 1082，其公网 19443 的 TLS 1.3 握手通过；本项目没有改动该代理。
+- 用户确认路由器映射已添加后，本机与手机流量访问新公网 20443 仍超时；公网 SSH 22222 与另一个项目的 19443 正常。
+- 只读核查 UFW：服务 active、默认入站 DROP，用户规则仅含 19443 等既有端口，没有 20443。`sudo -n ufw status` 要求密码，随后通过无网络、零 capabilities 容器只读挂载相关 UFW 配置完成规则检查，没有更改防火墙。已请求用户手动执行单条 20443/tcp 放行命令或提供此次操作的 sudo 凭据。
+
+当前限制：新公网 20443 尚待 UFW 放行后完成外网验证；浏览器首次自签名提示需用户手动确认，证书到期需手动更新。NAS 的 Docker / journal 读取权限、实际 Git 仓库路径和健康检查 URL 尚未配置。未更改 DNS、路由器、防火墙、SSH 服务或既有反向代理配置。

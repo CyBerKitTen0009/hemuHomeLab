@@ -6,7 +6,7 @@
 
 随后通过家庭内网直连飞牛 NAS，使用服务端密码认证；现有两台真实设备。NAS 的系统指标、磁盘与 systemd 服务列表已验证，当前账户无权读取 Docker 和 journal，页面按受限状态处理。
 
-**控制台已常驻部署到 ThinkBook。** Mac 离开家庭网络或关机后仍会继续采集。现有 HTTPS 入口待补充最终完整地址后接入；过渡期间在本机执行 `sh /Users/apple/HomelabControlCenter/scripts/connect-thinkbook.sh`，保持终端运行并访问 [ThinkBook 控制台](http://localhost:18000)；沿用原管理员账户和密码，无需启动 Mac 后端。部署位置、更新和安全访问方式见 [部署说明](docs/deployment.md)。
+**控制台已常驻部署到 ThinkBook，并启用独立自签名 HTTPS。** Mac 离开家庭网络或关机后仍会继续采集。访问地址为 [ThinkBook 控制台](https://ssh.hemu-server.top:20443)，沿用原管理员账户和密码，无需启动 Mac 后端；首次浏览器访问会提示证书不受信任，需要用户手动确认。内网与 SSH 转发下的 HTTPS 已验证，公网访问尚待主机防火墙放行 `20443/tcp` 后复核。部署位置、端口映射和维护方式见 [部署说明](docs/deployment.md)。
 
 项目私人仓库：[CyBerKitTen0009/hemuHomeLab](https://github.com/CyBerKitTen0009/hemuHomeLab)。新检出环境仍默认关闭真实 SSH；凭据和本机设备数据库不会随仓库分发。
 

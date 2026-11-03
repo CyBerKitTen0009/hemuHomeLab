@@ -1,0 +1,21 @@
+{
+	auto_https off
+	admin off
+	servers {
+		protocols h1 h2
+	}
+}
+
+https://:20443 {
+	tls /etc/hcc-tls/fullchain.pem /etc/hcc-tls/privkey.pem
+	request_body {
+		max_size 128KB
+	}
+	@console host {$HCC_WEB_HOST}
+	handle @console {
+		reverse_proxy app:8000
+	}
+	handle {
+		respond "Console hostname is not configured" 421
+	}
+}
