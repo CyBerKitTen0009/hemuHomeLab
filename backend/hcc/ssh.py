@@ -77,12 +77,14 @@ class SSHCollector:
                         output = "".join(chunks)
                         await process.wait_closed()
                         if process.exit_status != 0:
-                            raise ConnectionProblem("remote_command_failed", "远程只读采集失败；请确认 Linux 主机已有 Python 3，且当前账户有读取权限。")
+                            if re.search(r"permission denied|insufficient permissions|access denied", output, re.IGNORECASE):
+                                raise ConnectionProblem("remote_permission_denied", "当前 SSH 用户没有读取所选资源的权限，请在设备端检查该账户的读取权限。")
+                            raise ConnectionProblem("remote_command_failed", "远程只读命令执行失败；请检查所需工具是否可用，以及当前账户的读取权限。")
                         return output
         except asyncssh.HostKeyNotVerifiable:
             raise ConnectionProblem("host_key_mismatch", "SSH 主机密钥未知或不匹配。请通过可信渠道核验指纹，再更新专用 known_hosts；程序不会自动信任。")
         except asyncssh.PermissionDenied:
-            raise ConnectionProblem("authentication_failed", "SSH 认证失败，请检查用户名和专用私钥。")
+            raise ConnectionProblem("authentication_failed", "SSH 认证失败，请检查用户名和服务端凭据。")
         except (TimeoutError, asyncio.TimeoutError):
             raise ConnectionProblem("timeout", "SSH 连接或采集超时，将在下次轮询重新解析 DNS 并重试。")
         except (OSError, asyncssh.Error):

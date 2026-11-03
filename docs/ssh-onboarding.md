@@ -1,10 +1,18 @@
-# ThinkBook 首次接入
+# 真实 SSH 接入
+
+## 已验证的设备
 
 2026-11-03 已完成 ThinkBook 的首次真实只读连接验证。实际入口为用户指定的 `ssh.hemu-server.top:22222`，用户 `hemu`，使用 `sshkey/` 中的专用 Ed25519 密钥。
 
 本机 `known_hosts` 已有该精确主机和端口的信任条目，只复制匹配条目到被 Git 排除的 `config/known_hosts`，没有进行首次自动信任或修改个人 SSH 配置。`id_ed25519.pub` 是客户端认证公钥，与服务器主机公钥的用途不同。
 
 本机已配置 `config/credentials.json`（0600），并在 `.env` 中启用真实 SSH、停用初始模拟设备；这些文件和运行数据库不进入仓库。新检出环境仍需按下列步骤独立配置。
+
+同日已通过家庭内网添加飞牛 NAS：`192.168.5.100:22`，用户 `hemu`，主机名 `hemu-nas`，使用独立的服务端密码凭据，未配置跳板。只复制本机 `known_hosts` 中该地址已有的精确信任条目，并严格校验；其主机密钥与 ThinkBook 不同，保留为独立设备。密码只保存在本机 `config/credentials.json`（0600），不进入仓库或设备 API。
+
+NAS 已有 Python 3，系统指标、磁盘和 236 个 systemd 服务可读；Docker 守护进程运行，但该用户无权访问 Docker socket，也无权读取系统 journal。未执行 sudo、修改组成员或放宽 socket 权限。后端需位于家庭内网或有到该网段的路由才能直接采集。
+
+## 新环境准备
 
 需要确认的信息：
 

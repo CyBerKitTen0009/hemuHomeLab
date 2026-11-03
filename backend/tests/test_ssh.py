@@ -33,6 +33,10 @@ async def test_actual_ssh_key_verification_and_readonly_probe(settings, tmp_path
 
     async def process_handler(process):
         commands.append(process.command)
+        if process.command.startswith("journalctl "):
+            process.stdout.write("No journal files were opened due to insufficient permissions.\n")
+            process.exit(1)
+            return
         # Deliberately chunk the payload to verify complete stream reads.
         payload = json.dumps({"metrics":{"cpu_percent":12.5}, "docker":{"containers":[]}, "hostname":"test-linux"})
         process.stdout.write(payload[:20])
@@ -56,12 +60,17 @@ async def test_actual_ssh_key_verification_and_readonly_probe(settings, tmp_path
         assert commands[0].startswith("python3 - <<'HCC_READONLY_PROBE'")
         assert "PROBE_CONFIG = json.loads(base64.b64decode(" in commands[0]
         assert "/srv/path with ' quote" not in commands[0]
+        with pytest.raises(ConnectionProblem) as error:
+            await collector.logs(device, "system", "", 10)
+        assert error.value.code == "remote_permission_denied"
+        assert "权限" in error.value.message
+        assert "Python" not in error.value.message
         wrong_host = asyncssh.generate_private_key("ssh-ed25519")
         hosts.write_text(f"[127.0.0.1]:{port} " + wrong_host.export_public_key().decode())
         with pytest.raises(ConnectionProblem) as error:
             await collector.collect(device)
         assert error.value.code == "host_key_mismatch"
-        assert len(commands) == 1  # No command reached the untrusted host.
+        assert len(commands) == 2  # No command reached the untrusted host.
 
 
 def test_missing_credentials_and_permission_failures(settings, tmp_path):
