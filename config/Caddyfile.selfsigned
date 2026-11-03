@@ -6,14 +6,15 @@
 	}
 }
 
-https://:20443 {
+https://:{$HCC_HTTPS_PORT:20443} {
+	bind {$HCC_PUBLIC_BIND_ADDRESS:0.0.0.0}
 	tls /etc/hcc-tls/fullchain.pem /etc/hcc-tls/privkey.pem
 	request_body {
 		max_size 128KB
 	}
 	@console host {$HCC_WEB_HOST}
 	handle @console {
-		reverse_proxy app:8000
+		reverse_proxy {$HCC_UPSTREAM:127.0.0.1:18000}
 	}
 	handle {
 		respond "Console hostname is not configured" 421

@@ -1,4 +1,4 @@
-# Add to compose.ssh.yaml and compose.proxy.yaml for this project's HTTPS listener.
+# Linux HTTPS listener; add to compose.ssh.yaml and compose.proxy.yaml.
 services:
   https:
     image: ${HCC_HTTPS_IMAGE:-hemu-hcc-https:local}
@@ -9,10 +9,13 @@ services:
     read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    ports:
-      - ${HCC_PUBLIC_BIND_ADDRESS:-0.0.0.0}:${HCC_HTTPS_PORT:-20443}:20443
+    # Keep incoming HTTPS out of Docker's forwarding path on the ThinkBook.
+    network_mode: host
     environment:
       HCC_WEB_HOST: ${HCC_WEB_HOST:?Set the actual console hostname}
+      HCC_PUBLIC_BIND_ADDRESS: ${HCC_PUBLIC_BIND_ADDRESS:-0.0.0.0}
+      HCC_HTTPS_PORT: ${HCC_HTTPS_PORT:-20443}
+      HCC_UPSTREAM: 127.0.0.1:${HCC_HTTP_PORT:-18000}
     volumes:
       - ./config/Caddyfile.selfsigned:/etc/caddy/Caddyfile:ro
       - ${HCC_TLS_PATH:-./config/tls}:/etc/hcc-tls:ro

@@ -8,9 +8,9 @@
 
 用户需要在浏览器中手动确认自签名证书提示；HTTPS 登录流量仍通过 TLS 加密，会话使用 Secure / HttpOnly / SameSite Cookie。系统没有安装全局信任根或自动绕过浏览器证书警告。自签名实例不发送 HSTS。
 
-公网路由器映射为 **TCP 20443 → 192.168.5.16:20443**，用户已确认添加。本机内网与通过 SSH 转发的 HTTPS 登录、实时数据和访问防护均已验证；公网及手机流量访问仍超时。对照检查同一公网地址的 SSH 22222 和另一个项目的 HTTPS 19443 均可连接。
+公网路由器映射为 **TCP 20443 → 192.168.5.16:20443**，用户已添加映射和 UFW 的 `20443/tcp` 入站规则。公网域名与公网地址的 TLS 1.3、健康接口，以及直接通过公网域名的登录、实时数据与访问防护均已验证；用户已用手机流量确认能看到登录页。
 
-只读检查确认 UFW 已启用、默认入站 DROP，现有规则放行了 19443，但没有 20443。当前 SSH 账户执行 sudo 需要密码，因此暂未修改防火墙；需用户在 ThinkBook 执行 `sudo ufw allow 20443/tcp comment 'Homelab HTTPS'` 或提供专用于此次操作的 sudo 凭据后，由代理新增这条规则，再完成外网复测。自签名证书本身不会解释服务端未完成 TLS 握手的超时。
+本机存在 Meta 代理路由；原 Docker 桥接发布 HTTPS 端口时，内网正常，但公网连接请求到达物理网卡后无法完成握手。放行 UFW 后仍复现，因此将本项目 HTTPS 容器改为 Linux 主机网络，反向代理到 `127.0.0.1:18000`，公网访问随即恢复。应用容器继续使用原网络与回环端口，既有 19443 项目保持独立。
 
 公开 DNS-over-HTTPS 核查显示根域名 `hemu-server.top` 暂无 A / AAAA 记录，现有 `ssh.hemu-server.top` 已能解析到家庭公网地址，因此复用该记录作为 Web 域名；SSH 仍使用独立的 22222 端口。没有将解析后的公网 IP 固定写入控制台配置。若以后添加根域名解析，还需同步修改下面的 Web Host 与允许来源，不能只更换浏览器地址。
 
@@ -19,7 +19,7 @@
 - 部署根目录：`/home/hemu/apps/homelab-control-center`；源码位于 `source/`，数据位于 `data/`，SSH / 管理员凭据位于 `config/`，TLS 文件位于 `tls/`。
 - Compose 项目名 `hemu-homelab`，使用 `compose.ssh.yaml`、`compose.proxy.yaml`、`compose.public.yaml` 三份配置合并。应用容器 `hemu-homelab-app-1`，HTTPS 容器 `hemu-homelab-https-1`。
 - 应用镜像 `hemu-hcc:a66342c`，HTTPS 镜像 `hemu-hcc-https:selfsigned-20443`。HTTPS 镜像基于官方 Caddy，去掉二进制低端口 file capability，以兼容容器丢弃全部 capabilities 的设置。
-- 应用仅发布 `127.0.0.1:18000`，HTTPS 发布 `0.0.0.0:20443`，容器内 HTTPS 监听 20443。仅启用 HTTP/1.1、HTTP/2，不需要 UDP 映射。
+- 应用仅发布 `127.0.0.1:18000`；HTTPS 使用 `network_mode: host`，直接监听主机 `0.0.0.0:20443` 并转发到该回环端口。`compose.public.yaml` 用于 Linux 主机部署，HTTPS 不再配置 Docker `ports`。仅启用 HTTP/1.1、HTTP/2，不需要 UDP 映射。
 - 应用运行 UID/GID 10001；应用与 HTTPS 均为只读根文件系统、丢弃全部 capabilities、禁止提权，SSH 凭据与 TLS 文件分别只读挂载，不挂载宿主 Docker socket。
 - 应用凭据与数据目录 0700、私密文件 0600，归 UID/GID 10001 所有；TLS 目录 0700、证书和私钥 0600，归 HTTPS 容器 UID 0 所有。
 - ThinkBook 自采集走 `host.docker.internal:22`，通过 Docker `host-gateway` 访问宿主机；NAS 直接访问 `192.168.5.100:22`。分别严格校验已有主机密钥。
@@ -40,7 +40,7 @@ HCC_PUBLIC_BIND_ADDRESS=0.0.0.0
 HCC_POLL_SECONDS=30
 ```
 
-`HCC_HTTPS_PORT` 控制 ThinkBook 的监听端口；`HCC_PUBLIC_ORIGIN` 必须对应浏览器实际使用的完整 HTTPS Origin。如果路由器的外部端口不同，需要相应修改 Origin，而不是假定内外端口相同。
+`HCC_HTTPS_PORT` 控制 ThinkBook 的监听端口，`HCC_PUBLIC_BIND_ADDRESS` 控制绑定地址，`HCC_HTTP_PORT` 默认 18000，同时用于应用回环发布端口与 HTTPS 上游。`HCC_PUBLIC_ORIGIN` 必须对应浏览器实际使用的完整 HTTPS Origin。如果路由器的外部端口不同，需要相应修改 Origin，而不是假定内外端口相同。
 
 ## 证书
 
