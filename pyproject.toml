@@ -1,0 +1,19 @@
+[project]
+name = "homelab-control-center"
+version = "0.1.0"
+description = "Read-only SSH observability for a personal homelab"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "uvicorn[standard]>=0.34,<1",
+  "asyncssh>=2.21,<3",
+  "python-dotenv>=1.0,<2",
+]
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "pytest-asyncio>=0.25,<2", "httpx>=0.28,<1"]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

@@ -1,0 +1,16 @@
+.env
+.venv/
+data/
+config/credentials.json
+config/known_hosts
+config/keys/
+config/tls/
+sshkey/
+frontend/node_modules/
+frontend/.svelte-kit/
+frontend/build/
+__pycache__/
+.pytest_cache/
+*.pyc
+.DS_Store
+artifacts/

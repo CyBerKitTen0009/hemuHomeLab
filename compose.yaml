@@ -1,0 +1,45 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: [/tmp:size=64m,mode=1777]
+    environment:
+      HCC_DATA_DIR: /data
+      HCC_CONFIG_DIR: /run/hcc
+      HCC_ADMIN_PASSWORD_FILE: /run/hcc/admin.password
+      HCC_ADMIN_USER: ${HCC_ADMIN_USER:-admin}
+      HCC_SECURE_COOKIES: "true"
+      HCC_ENABLE_SSH: ${HCC_ENABLE_SSH:-false}
+      HCC_SEED_DEMO: ${HCC_SEED_DEMO:-true}
+      HCC_POLL_SECONDS: ${HCC_POLL_SECONDS:-30}
+      HCC_ALLOWED_ORIGINS: ${HCC_PUBLIC_ORIGIN:?Set the actual HTTPS Web console origin including its custom port}
+    volumes:
+      - homelab_data:/data
+      - ./config:/run/hcc:ro
+    healthcheck:
+      test: [CMD, .venv/bin/python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  https:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - ${HCC_BIND_ADDRESS:-127.0.0.1}:${HCC_HTTPS_PORT:-8443}:8443
+    volumes:
+      - ./config/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./config/tls:/etc/hcc-tls:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+volumes:
+  homelab_data:
+  caddy_data:
+  caddy_config:

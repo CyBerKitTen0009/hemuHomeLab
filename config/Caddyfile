@@ -1,0 +1,15 @@
+{
+  auto_https off
+  admin off
+}
+
+:8443 {
+  # Supply an existing certificate valid for the Web console hostname.
+  # No DNS, router, firewall, or ACME challenge changes are performed.
+  tls /etc/hcc-tls/fullchain.pem /etc/hcc-tls/privkey.pem
+  request_body {
+    max_size 128KB
+  }
+  header Strict-Transport-Security "max-age=31536000"
+  reverse_proxy app:8000
+}
