@@ -4,7 +4,9 @@
 
 已确认的第一阶段范围：**只读监控，先在 Mac 本地验证，内置单管理员登录**。2026-11-03 已使用用户提供的专用密钥连接 ThinkBook，完成真实系统指标、Docker、systemd 与日志验证；主机密钥来自本机已存在的精确主机 / 端口信任记录。未安装远程软件或改变 DNS、SSH、路由器、防火墙、代理配置。
 
-随后通过家庭内网直连飞牛 NAS，使用服务端密码认证；本机现有两台真实设备。NAS 的系统指标、磁盘与 systemd 服务列表已验证，当前账户无权读取 Docker 和 journal，页面按受限状态处理。家庭内网地址要求控制台后端能访问该网段。
+随后通过家庭内网直连飞牛 NAS，使用服务端密码认证；现有两台真实设备。NAS 的系统指标、磁盘与 systemd 服务列表已验证，当前账户无权读取 Docker 和 journal，页面按受限状态处理。
+
+**控制台已常驻部署到 ThinkBook。** Mac 离开家庭网络或关机后仍会继续采集。现有 HTTPS 入口待补充最终完整地址后接入；过渡期间在本机执行 `sh /Users/apple/HomelabControlCenter/scripts/connect-thinkbook.sh`，保持终端运行并访问 [ThinkBook 控制台](http://localhost:18000)；沿用原管理员账户和密码，无需启动 Mac 后端。部署位置、更新和安全访问方式见 [部署说明](docs/deployment.md)。
 
 项目私人仓库：[CyBerKitTen0009/hemuHomeLab](https://github.com/CyBerKitTen0009/hemuHomeLab)。新检出环境仍默认关闭真实 SSH；凭据和本机设备数据库不会随仓库分发。
 
@@ -37,7 +39,7 @@ cd ..
 .venv/bin/python -m uvicorn backend.hcc.main:app --host 127.0.0.1 --port 8000
 ```
 
-访问 [本地构建版本](http://localhost:8000)。本地 HTTP 仅绑定回环地址；生产配置强制使用 HTTPS Secure Cookie。
+访问 [本地构建版本](http://localhost:8000)。这是 Mac 独立开发实例。HTTPS 部署使用 Secure Cookie；已部署的 SSH 访问模式仅绑定 ThinkBook 回环地址，浏览器连接通过 SSH 转发，详见部署说明。
 
 ## 已实现
 

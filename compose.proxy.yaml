@@ -1,0 +1,6 @@
+# Overlay for the existing HTTPS proxy; preserves the deployed data and loopback port.
+services:
+  app:
+    environment:
+      HCC_SECURE_COOKIES: "true"
+      HCC_ALLOWED_ORIGINS: ${HCC_PUBLIC_ORIGIN:?Set the actual existing HTTPS console origin including its external port}

@@ -46,4 +46,14 @@ SSH 集成测试仅使用本机回环地址临时 SSH 服务：专用 Ed25519 �
 - 密码、专用主机记录与设备数据库仅保存在被 Git / Docker 构建上下文排除的本地文件中，凭据文件权限为 0600；设备 API 不返回密码。
 - 未执行 sudo、调整组成员或放宽 socket 权限。NAS 的内网直连要求后端可访问家庭网段。
 
-当前限制：Mac 的 Docker 引擎未运行，尚未验证镜像实际构建与容器 HTTPS 启动；NAS 的 Docker / journal 读取权限、实际 Git 仓库路径和健康检查 URL 尚未配置。没有向 ThinkBook / NAS 安装控制台或修改网络、服务配置。
+## ThinkBook 常驻部署
+
+- 已在 ThinkBook 上使用现有 Docker Engine / Compose 构建镜像 `hemu-hcc:a66342c`；镜像内前端类型检查、构建与 Python 锁文件依赖安装成功。
+- 实际容器 `hemu-homelab-app-1` 健康运行，仅发布 `127.0.0.1:18000`；运行用户 UID 10001，只读根文件系统、丢弃 capabilities、禁止提权，凭据只读挂载。
+- 修复 Compose 的 tmpfs 流式列表逗号解析问题，避免 `mode=1777` 被误当作第二个挂载路径；SSH 和 HTTPS 两份配置均已修正。
+- 通过严格主机密钥校验的既有 SSH 转发验证真实登录、会话、两台设备在线状态、历史和 NAS journal 权限提示；管理员密码沿用，设备 API 不返回 NAS 密码。
+- 浏览器验证部署实例登录与两台真实设备总览，截图为 `artifacts/thinkbook-deployed-overview.png`。
+- 迁移保留两台设备 ID 与历史，清除迁移会话。ThinkBook 自身改走 `host.docker.internal:22`，NAS 仍为内网直连；已验证自连接主机密钥与此前 ThinkBook 一致。
+- Docker 已开机启用，容器设置 `unless-stopped`；实际重启本项目容器后，两台设备重新采集成功，未重启 ThinkBook 或既有业务容器。
+
+当前限制：控制台独立公网 HTTPS 域名、证书与自定义端口尚未配置，当前使用 SSH 加密访问；NAS 的 Docker / journal 读取权限、实际 Git 仓库路径和健康检查 URL 尚未配置。未更改 DNS、路由器、防火墙、SSH 服务或既有反向代理配置。
