@@ -33,10 +33,10 @@ class DeviceInput(BaseModel):
     host: str = Field(default="hemu-server.top", min_length=1, max_length=253)
     port: int = Field(default=22, ge=1, le=65535)
     username: str = Field(default="", max_length=64, pattern=r"^[a-zA-Z0-9_.-]*$")
-    mode: Literal["demo", "ssh"] = "ssh"
+    mode: Literal["demo", "ssh", "agent"] = "ssh"
     credential_ref: str = Field(default="thinkbook", pattern=r"^[a-zA-Z0-9_-]{1,48}$")
     jump_device_id: str | None = Field(default=None, max_length=64)
-    kind: Literal["linux", "nas", "windows"] = "linux"
+    kind: Literal["linux", "nas", "windows", "macos"] = "linux"
     git_paths: list[str] = Field(default_factory=list, max_length=20)
     health_targets: list[HealthTarget] = Field(default_factory=list, max_length=12)
 

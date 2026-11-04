@@ -15,8 +15,8 @@ export type Snapshot = {
   git?: Repo[]; health?: Health[];
 };
 export type DeviceConfig = {
-  name: string; host: string; port: number; username: string; mode: 'demo' | 'ssh';
-  credential_ref: string; jump_device_id: string | null; kind: 'linux' | 'nas' | 'windows';
+  name: string; host: string; port: number; username: string; mode: 'demo' | 'ssh' | 'agent';
+  credential_ref: string; jump_device_id: string | null; kind: 'linux' | 'nas' | 'windows' | 'macos';
   git_paths: string[]; health_targets: { name: string; url: string }[];
 };
 export type Device = DeviceConfig & { id: string; snapshot?: Snapshot | null };

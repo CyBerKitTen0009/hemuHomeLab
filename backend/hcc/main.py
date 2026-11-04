@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .config import Settings, from_env
+from .agents import AgentReport, authorize_agent, current_snapshot, snapshot_payload
 from .db import Database
 from .demo import seed
 from .models import DeviceInput, LoginInput
@@ -33,6 +34,10 @@ class ConfigBackup(BaseModel):
 
 
 def validate_jump(db, config, device_id=None):
+    if config.mode == "agent" and (config.kind != "macos" or config.jump_device_id or config.health_targets):
+        raise HTTPException(422, "主动上报当前支持 macOS 系统指标与 Git 状态，不使用跳板或健康检查")
+    if config.kind == "macos" and config.mode == "ssh":
+        raise HTTPException(422, "macOS 请使用主动上报方式接入")
     if config.kind == "windows" and config.mode == "ssh":
         raise HTTPException(422, "第一阶段 SSH 采集仅支持 Linux / NAS")
     if config.jump_device_id:
@@ -57,6 +62,8 @@ def create_app(settings: Settings | None = None):
     login_attempts = defaultdict(deque)
 
     async def refresh(app, device):
+        if device["mode"] == "agent":
+            return current_snapshot(app.state.db, device, settings.poll_seconds)
         async with locks[device["id"]], semaphore:
             try:
                 payload = await app.state.collector.collect(device)
@@ -181,7 +188,38 @@ def create_app(settings: Settings | None = None):
     @app.get("/api/devices")
     async def devices(request: Request):
         session(request)
-        return [{**device, "snapshot": app.state.db.snapshot(device["id"])} for device in app.state.db.devices()]
+        return [{**device, "snapshot": current_snapshot(app.state.db, device, settings.poll_seconds) if device["mode"] == "agent" else app.state.db.snapshot(device["id"])} for device in app.state.db.devices()]
+
+    @app.post("/api/devices/{device_id}/agent-token")
+    async def issue_agent_token(device_id: str, request: Request):
+        session(request, mutation=True)
+        device = device_or_404(device_id)
+        if device["mode"] != "agent":
+            raise HTTPException(422, "此设备未使用主动上报")
+        token = secrets.token_urlsafe(48)
+        with app.state.db.connect() as conn:
+            conn.execute("INSERT INTO agent_tokens VALUES (?,?) ON CONFLICT(device_id) DO UPDATE SET token_hash=excluded.token_hash", (device_id, digest(token)))
+        app.state.db.audit("agent_token_rotated", device_id)
+        return {"device_id": device_id, "token": token}
+
+    @app.get("/api/agents/{device_id}/config")
+    async def agent_config(device_id: str, request: Request):
+        device = authorize_agent(request, device_id)
+        return {"git_paths": device["git_paths"], "poll_seconds": settings.poll_seconds}
+
+    @app.post("/api/agents/{device_id}/snapshot")
+    async def agent_report(device_id: str, report: AgentReport, request: Request):
+        device = authorize_agent(request, device_id)
+        payload = snapshot_payload(report, device)
+        async with locks[device_id]:
+            # Configuration may change while a request is being validated.
+            if app.state.db.device(device_id) != device:
+                raise HTTPException(409, "设备配置已变化，请重新获取配置")
+            previous = app.state.db.snapshot(device_id)
+            if previous and time.time() - previous.get("timestamp", 0) < 5:
+                raise HTTPException(429, "上报过于频繁", headers={"Retry-After": "5"})
+            app.state.db.save_snapshot(device_id, payload)
+        return {"ok": True, "poll_seconds": settings.poll_seconds}
 
     @app.post("/api/devices", status_code=201)
     async def add_device(data: DeviceInput, request: Request):
@@ -205,12 +243,13 @@ def create_app(settings: Settings | None = None):
             raise HTTPException(409, "此设备仍被用作 SSH 跳板")
         config = data.model_dump()
         connection_fields = ("host", "port", "username", "mode", "credential_ref", "jump_device_id")
-        connection_changed = any(previous.get(field) != config.get(field) for field in connection_fields)
+        connection_changed = not (previous["mode"] == config["mode"] == "agent") and any(previous.get(field) != config.get(field) for field in connection_fields)
         app.state.db.put_device(device_id, config)
         if connection_changed:
             with app.state.db.connect() as conn:
                 conn.execute("DELETE FROM snapshots WHERE device_id=?", (device_id,))
                 conn.execute("DELETE FROM samples WHERE device_id=?", (device_id,))
+                conn.execute("DELETE FROM agent_tokens WHERE device_id=?", (device_id,))
         app.state.db.audit("device_updated", device_id, data.name)
         return {**app.state.db.device(device_id), "snapshot": await refresh(app, app.state.db.device(device_id))}
 
@@ -243,6 +282,8 @@ def create_app(settings: Settings | None = None):
     async def logs(device_id: str, request: Request, source: str = Query(default="system", pattern="^(system|container|service)$"), target: str = Query(default="", max_length=128), limit: int = Query(default=200, ge=1, le=1000), q: str = Query(default="", max_length=200)):
         session(request)
         device = device_or_404(device_id)
+        if device["mode"] == "agent":
+            raise HTTPException(422, "此设备通过主动上报接入，当前不提供远程日志读取")
         snapshot = app.state.db.snapshot(device_id) or {}
         if source == "container" and target not in {item.get("name") for item in snapshot.get("docker", {}).get("containers", [])}:
             raise HTTPException(422, "请选择已采集到的容器")
@@ -276,6 +317,10 @@ def create_app(settings: Settings | None = None):
         if len(configs) != len(data.devices):
             raise HTTPException(422, "备份中有重复设备 ID")
         for item in data.devices:
+            if item.mode == "agent" and (item.kind != "macos" or item.jump_device_id or item.health_targets):
+                raise HTTPException(422, "备份中的主动上报设备配置无效")
+            if item.kind == "macos" and item.mode == "ssh":
+                raise HTTPException(422, "macOS 请使用主动上报")
             if item.kind == "windows" and item.mode == "ssh":
                 raise HTTPException(422, "暂不支持 Windows SSH 采集")
             if item.jump_device_id:
@@ -287,6 +332,7 @@ def create_app(settings: Settings | None = None):
                 conn.execute("DELETE FROM devices")
                 conn.execute("DELETE FROM snapshots")
                 conn.execute("DELETE FROM samples")
+                conn.execute("DELETE FROM agent_tokens")
                 for item in data.devices:
                     conn.execute("INSERT INTO devices VALUES (?,?)", (item.id, json.dumps(item.model_dump(exclude={"id"}))))
         app.state.db.audit("config_restored", detail=f"{len(data.devices)} devices")

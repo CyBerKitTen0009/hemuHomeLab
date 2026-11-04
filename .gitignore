@@ -2,6 +2,8 @@
 .venv/
 data/
 config/credentials.json
+config/mac-agent.json
+config/mac-agent.json.next
 config/known_hosts
 config/keys/
 config/tls/

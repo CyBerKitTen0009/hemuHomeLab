@@ -14,6 +14,7 @@ class Database:
                 PRAGMA journal_mode=WAL;
                 CREATE TABLE IF NOT EXISTS devices (id TEXT PRIMARY KEY, config TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS agent_tokens (device_id TEXT PRIMARY KEY, token_hash TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS snapshots (device_id TEXT PRIMARY KEY, payload TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS samples (id INTEGER PRIMARY KEY, device_id TEXT NOT NULL, timestamp REAL NOT NULL, payload TEXT NOT NULL);
                 CREATE INDEX IF NOT EXISTS samples_device_time ON samples(device_id,timestamp);
@@ -45,7 +46,7 @@ class Database:
 
     def delete_device(self, device_id):
         with self.connect() as conn:
-            for table, column in [("devices", "id"), ("snapshots", "device_id"), ("samples", "device_id")]:
+            for table, column in [("devices", "id"), ("snapshots", "device_id"), ("samples", "device_id"), ("agent_tokens", "device_id")]:
                 conn.execute(f"DELETE FROM {table} WHERE {column}=?", (device_id,))
 
     def snapshot(self, device_id):

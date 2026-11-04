@@ -3,6 +3,7 @@
   const paths: Record<string, string> = {
     grid: 'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',
     server: 'M4 3h16v7H4z M4 14h16v7H4z M7 6.5h.01 M7 17.5h.01 M11 6.5h6 M11 17.5h6',
+    laptop: 'M4 3h16v13H4z M2 20h20l-2-4H4z M9 20h6',
     box: 'M12 3 3 8v9l9 5 9-5V8z M3 8l9 5 9-5 M12 13v9 M7 5.8l10 5.6',
     activity: 'M2 12h5l3-9 4 18 3-9h5',
     terminal: 'm4 6 5 6-5 6 M12 18h8',

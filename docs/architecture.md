@@ -9,6 +9,7 @@ Caddy（生产）→ FastAPI（认证、CSRF、Origin/Host、审计、固定 API
                     ├── 服务端私密文件：管理员密码、专用 SSH 凭据
                     └── AsyncSSH → hemu-server.top → ThinkBook
                                       └── 可选单层跳板 → NAS
+Mac 只读采集端 ── 出站 HTTPS / 设备专用令牌 ──→ FastAPI
 ```
 
 ## 数据模型
@@ -19,8 +20,11 @@ Caddy（生产）→ FastAPI（认证、CSRF、Origin/Host、审计、固定 API
 - `sessions`：随机 48 字节会话令牌的 SHA256 哈希、独立 CSRF token、8 小时有效期。
 - `audit`：登录、设备配置变更、刷新、日志读取、导出恢复，最多保留 10000 条，页面显示最近 100 条。
 - `metadata`：一次性演示数据初始化标记，删除演示设备后不会重生。
+- `agent_tokens`：主动上报设备的令牌哈希；删除、切换采集模式与恢复配置会撤销，不进入配置导出。
 
 修改设备名称、分类、Git 路径或健康检查时保留该设备的历史采样。更换 SSH 主机、端口、用户、认证配置、跳板或采集模式时清除旧快照和历史，避免混合不同连接目标的指标。
+
+主动上报设备以设备 ID 标识，修改显示名称、标识或 Git 配置不改变身份。采集端本机允许列表限制真实仓库路径，服务器不能下发任意命令。上报数据使用有界模型校验与脱敏，服务端记录接收时间；每台设备最多每 5 秒接受一次快照。超时离线按最后一次上报时间计算，不追加错误采样。
 
 ## 连接生命周期
 
@@ -43,3 +47,5 @@ SSH 禁用用户默认配置和 Agent，只加载命名凭据配置。私钥权�
 前端使用当前 [SvelteKit 适配器配置](https://svelte.dev/docs/kit/adapters)；后端生命周期遵循 [FastAPI lifespan](https://fastapi.tiangolo.com/advanced/events/)；SSH 采用 [AsyncSSH 的显式 known_hosts 与 tunnel 配置](https://asyncssh.readthedocs.io/en/latest/api.html)。
 
 第一阶段不支持 Windows 实际采集，不采集任意目录，不跟踪持续日志流，不提供远程变更。健康检查以配置 URL 的 HTTP 状态为依据（2xx / 3xx 为正常），不等同于业务功能验证。脱敏仅覆盖常见秘密格式；主机本身的可信度、账户权限、凭据与 TLS 证书运维仍由管理员负责。
+
+macOS 系统指标由独立采集端通过 [psutil](https://psutil.io/) 获取，使用系统计数器，不读取进程列表或个人日志；详细配置与网络行为见 [Mac 接入](mac-agent.md)。

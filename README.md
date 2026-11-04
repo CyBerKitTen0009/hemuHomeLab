@@ -6,6 +6,8 @@
 
 随后通过家庭内网直连飞牛 NAS，使用服务端密码认证；现有两台真实设备。NAS 的系统指标、磁盘与 systemd 服务列表已验证，当前账户无权读取 Docker 和 journal，页面按受限状态处理。
 
+支持随身 Mac 主动上报系统指标与选定 Git 仓库状态，使用设备专用凭据、HTTPS 证书验证与本机仓库允许列表。用户登录时启动，断网自动重试，休眠后显示离线并保留历史。安装和维护见 [Mac 接入说明](docs/mac-agent.md)。
+
 2026-11-04 已接入 ThinkBook 上的 Digital Life Git 仓库，以及控制台 API、Digital Life `/healthz` 两项真实健康检查。修改名称、仓库或健康检查配置会保留同一连接目标的历史曲线；更换连接配置时清除旧目标的指标。
 
 **控制台已常驻部署到 ThinkBook，并启用独立自签名 HTTPS。** Mac 离开家庭网络或关机后仍会继续采集。访问地址为 [ThinkBook 控制台](https://ssh.hemu-server.top:20443)，沿用原管理员账户和密码，无需启动 Mac 后端；首次浏览器访问会提示证书不受信任，需要用户手动确认。公网 HTTPS、登录与两台设备实时数据已验证，用户已通过手机流量确认登录页可达。部署位置、端口映射和维护方式见 [部署说明](docs/deployment.md)。
@@ -56,7 +58,7 @@ cd ..
 - 配置导出 / 恢复、审计记录；深浅色主题和响应式布局。
 - Docker Compose + Caddy 自定义 HTTPS 端口部署配置。
 
-演示数据始终带 `DEMO / 模拟` 标识。Windows 是模拟离线展示，第一阶段真实采集仅支持 Linux / Linux NAS。第一阶段没有容器启停、服务重启、交互 Shell 或任意命令 API。
+演示数据始终带 `DEMO / 模拟` 标识。Windows 是模拟离线展示；真实 SSH 采集支持 Linux / Linux NAS，Mac 使用主动上报。第一阶段没有容器启停、服务重启、交互 Shell 或任意命令 API。
 
 ## 接入真实 SSH
 
