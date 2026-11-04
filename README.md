@@ -4,13 +4,13 @@
 
 已确认的第一阶段范围：**只读监控，先在 Mac 本地验证，内置单管理员登录**。2026-11-03 已使用用户提供的专用密钥连接 ThinkBook，完成真实系统指标、Docker、systemd 与日志验证；主机密钥来自本机已存在的精确主机 / 端口信任记录。
 
-随后通过家庭内网直连飞牛 NAS，使用服务端密码认证；现有两台真实设备。NAS 的系统指标、磁盘与 systemd 服务列表已验证，当前账户无权读取 Docker 和 journal，页面按受限状态处理。
+随后通过家庭内网直连飞牛 NAS，使用服务端密码认证。NAS 的系统指标、磁盘与 systemd 服务列表已验证，当前账户无权读取 Docker 和 journal，页面按受限状态处理。
 
-支持随身 Mac 主动上报系统指标与选定 Git 仓库状态，使用设备专用凭据、HTTPS 证书验证与本机仓库允许列表。用户登录时启动，断网自动重试，休眠后显示离线并保留历史。安装和维护见 [Mac 接入说明](docs/mac-agent.md)。
+2026-11-04 已将 MacBook Air M3 作为第三台真实设备接入，主动上报系统指标与 5 个选定 Git 仓库状态，使用设备专用凭据、HTTPS 证书验证与本机仓库允许列表。用户登录时启动，断网自动重试，休眠后显示离线并保留历史。安装和维护见 [Mac 接入说明](docs/mac-agent.md)。
 
 2026-11-04 已接入 ThinkBook 上的 Digital Life Git 仓库，以及控制台 API、Digital Life `/healthz` 两项真实健康检查。修改名称、仓库或健康检查配置会保留同一连接目标的历史曲线；更换连接配置时清除旧目标的指标。
 
-**控制台已常驻部署到 ThinkBook，并启用独立自签名 HTTPS。** Mac 离开家庭网络或关机后仍会继续采集。访问地址为 [ThinkBook 控制台](https://ssh.hemu-server.top:20443)，沿用原管理员账户和密码，无需启动 Mac 后端；首次浏览器访问会提示证书不受信任，需要用户手动确认。公网 HTTPS、登录与两台设备实时数据已验证，用户已通过手机流量确认登录页可达。部署位置、端口映射和维护方式见 [部署说明](docs/deployment.md)。
+**控制台已常驻部署到 ThinkBook，并启用独立自签名 HTTPS。** Mac 离开家庭网络或关机后，ThinkBook 仍会采集家庭内的设备。访问地址为 [ThinkBook 控制台](https://ssh.hemu-server.top:20443)，沿用原管理员账户和密码，无需启动 Mac 后端；首次浏览器访问会提示证书不受信任，需要用户手动确认。用户已通过手机流量确认登录页可达；当前公网页面已验证 ThinkBook 与 Mac 在线，NAS 按用户说明关机并保留上次数据。部署位置、端口映射和维护方式见 [部署说明](docs/deployment.md)。
 
 项目私人仓库：[CyBerKitTen0009/hemuHomeLab](https://github.com/CyBerKitTen0009/hemuHomeLab)。新检出环境仍默认关闭真实 SSH；凭据和本机设备数据库不会随仓库分发。
 
@@ -43,13 +43,14 @@ cd ..
 .venv/bin/python -m uvicorn backend.hcc.main:app --host 127.0.0.1 --port 8000
 ```
 
-访问 [本地构建版本](http://localhost:8000)。这是 Mac 独立开发实例。HTTPS 部署使用 Secure Cookie；已部署的 SSH 访问模式仅绑定 ThinkBook 回环地址，浏览器连接通过 SSH 转发，详见部署说明。
+访问 [本地构建版本](http://localhost:8000)。这是 Mac 独立开发实例。正式部署通过独立 HTTPS 入口访问并使用 Secure Cookie；SSH 转发作为应急回退方式，详见部署说明。
 
 ## 已实现
 
 - 带随机初始密码、scrypt 校验、8 小时 HttpOnly / SameSite 会话、登录限流的管理员认证。
 - 设备新增、编辑、删除；域名、端口、用户名、服务端凭据引用、单层 SSH 跳板。
 - Linux CPU、内存、磁盘、网络吞吐、负载和运行时间；7 天历史，页面最近 120 次采样趋势。
+- macOS 系统指标与选定 Git 仓库主动上报、设备独立令牌、登录自启动和断线重试。
 - Docker 容器状态与资源、镜像、Compose 项目、最近日志。
 - systemd 服务状态、失败信息和 journal 运行历史。
 - 指定 Git 仓库的分支、工作区和最近提交；禁用可选索引写入与 fsmonitor 钩子。

@@ -18,17 +18,18 @@
 
 - 部署根目录：`/home/hemu/apps/homelab-control-center`；源码位于 `source/`，数据位于 `data/`，SSH / 管理员凭据位于 `config/`，TLS 文件位于 `tls/`。
 - Compose 项目名 `hemu-homelab`，使用 `compose.ssh.yaml`、`compose.proxy.yaml`、`compose.public.yaml` 三份配置合并。应用容器 `hemu-homelab-app-1`，HTTPS 容器 `hemu-homelab-https-1`。
-- 应用镜像 `hemu-hcc:b395ef1`，HTTPS 镜像 `hemu-hcc-https:selfsigned-20443`。HTTPS 镜像基于官方 Caddy，去掉二进制低端口 file capability，以兼容容器丢弃全部 capabilities 的设置。
+- 应用镜像 `hemu-hcc:4c5da3f`，HTTPS 镜像 `hemu-hcc-https:selfsigned-20443`。HTTPS 镜像基于官方 Caddy，去掉二进制低端口 file capability，以兼容容器丢弃全部 capabilities 的设置。
 - 应用仅发布 `127.0.0.1:18000`；HTTPS 使用 `network_mode: host`，直接监听主机 `0.0.0.0:20443` 并转发到该回环端口。`compose.public.yaml` 用于 Linux 主机部署，HTTPS 不再配置 Docker `ports`。仅启用 HTTP/1.1、HTTP/2，不需要 UDP 映射。
 - 应用运行 UID/GID 10001；应用与 HTTPS 均为只读根文件系统、丢弃全部 capabilities、禁止提权，SSH 凭据与 TLS 文件分别只读挂载，不挂载宿主 Docker socket。
 - 应用凭据与数据目录 0700、私密文件 0600，归 UID/GID 10001 所有；TLS 目录 0700、证书和私钥 0600，归 HTTPS 容器 UID 0 所有。
 - ThinkBook 自采集走 `host.docker.internal:22`，通过 Docker `host-gateway` 访问宿主机；NAS 直接访问 `192.168.5.100:22`。分别严格校验已有主机密钥。
 - 两台设备 ID 与历史采样已迁移，迁移会话已清除。Docker 已启用开机启动，容器均设置 `restart: unless-stopped`；已验证应用容器重启后恢复采集，未重启宿主机或其他项目的服务。
+- 2026-11-04 新增 MacBook Air M3 主动上报，目前共三台真实设备。Mac 每 30 秒通过公网 HTTPS 上报系统指标与 5 个仓库状态，120 秒未上报显示离线；ThinkBook 不向随身 Mac 发起入站连接。
 
 当前 `source/.env` 的非秘密配置包括：
 
 ```dotenv
-HCC_IMAGE=hemu-hcc:b395ef1
+HCC_IMAGE=hemu-hcc:4c5da3f
 HCC_HTTPS_IMAGE=hemu-hcc-https:selfsigned-20443
 HCC_CONFIG_PATH=/home/hemu/apps/homelab-control-center/config
 HCC_DATA_PATH=/home/hemu/apps/homelab-control-center/data
@@ -56,6 +57,14 @@ HCC_POLL_SECONDS=30
 
 部署源码是 Git 归档，不含 `.git`，因此没有将 `/home/hemu/apps/homelab-control-center/source` 添加为 Git 监控目标。上述配置保存在运行数据库中，凭据仍由服务端私密文件独立管理。
 
+## Mac 登录采集服务
+
+Mac 已安装本用户的 `~/Library/LaunchAgents/top.hemu.homelab.mac-agent.plist`，使用本项目 `data/mac-agent-venv` 独立运行环境，登录时启动并自动重试网络连接。设备令牌只保存在本机权限 0600 的 `config/mac-agent.json`，服务端仅保存哈希；LaunchAgent 不包含管理员密码或令牌正文。
+
+GitHub 记录中的本机匹配仓库已接入：HomelabControlCenter、IncidentPilot、TraceForge、dsh-quota-dashboard、论文。只上报分支、最近提交与工作区状态，源码与个人日志不上传。新增仓库、令牌轮换与停止服务见 [Mac 接入说明](mac-agent.md)。
+
+采集端显式信任 `data/thinkbook-selfsigned.pem` 并核验域名，不使用跳过 TLS 校验的连接。更新服务器证书时，需同步更新该 Mac 公开证书文件；采集服务下次尝试连接会重新加载文件。
+
 ## 证书
 
 专用证书覆盖 `ssh.hemu-server.top`、`hemu-server.top`、ThinkBook 内网 IP 与回环 IP，私钥只在 ThinkBook 生成和保存。证书有效至 **2027-11-03**，不会自动续期；更新证书与私钥后需重启本项目 HTTPS 容器。若以后需要浏览器默认信任与自动续期，可另行改用 DNS 验证签发的证书。
@@ -78,9 +87,9 @@ docker compose -f compose.ssh.yaml -f compose.proxy.yaml -f compose.public.yaml 
 
 构建新镜像后，更新 `.env` 中对应的镜像标签，再用同样三份 Compose 配置执行 `up -d --no-build`。修改 Caddyfile 或更新 TLS 文件后，用同样三份配置执行 `restart https`。保留部署根目录的 `data/`、`config/`、`tls/`，不要重新覆盖在线数据库。
 
-完整备份使用 SQLite 在线 backup API；编辑迁移目标后，关闭数据库连接并完成 checkpoint，再传输单个数据库文件。设置页面导出仅含设备配置，不含凭据；恢复会清空采样。密钥、密码和 TLS 私钥需独立保护，均不进入 Git、构建上下文或镜像。
+完整备份使用 SQLite 在线 backup API；编辑迁移目标后，关闭数据库连接并完成 checkpoint，再传输单个数据库文件。设置页面导出仅含设备配置，不含凭据；恢复会清空采样并撤销主动上报令牌，Mac 需重新注册。密钥、密码和 TLS 私钥需独立保护，均不进入 Git、构建上下文或镜像。
 
-本次更新前已在宿主机 `data/backups/` 创建完整 SQLite 备份，文件权限 0600，完整性检查为 `ok`。接入后核对两台设备的全部采样数量和最早时间，历史保留；当前尚未配置定时备份。
+本次更新前已在宿主机 `data/backups/` 创建完整 SQLite 备份，文件权限 0600，完整性检查为 `ok`。Mac 接入后核对原两台设备的全部采样数量和最早时间，历史保留；最终页面更新前再次备份，包含新设备及令牌哈希。当前尚未配置定时备份。
 
 ## SSH-only 应急回退
 

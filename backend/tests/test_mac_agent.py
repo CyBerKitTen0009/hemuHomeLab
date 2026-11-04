@@ -11,7 +11,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
 
-from backend.hcc.mac_agent import Reporter, load_config
+from backend.hcc.mac_agent import Reporter, load_config, run
 from backend.hcc.mac_probe import permitted_repo
 
 
@@ -40,6 +40,31 @@ def test_config_requires_private_permissions_and_https(tmp_path):
     for server in ["http://lab.example", "https://user:pass@lab.example", "https://lab.example/path"]:
         path.write_text(json.dumps({**config, "server": server}))
         with pytest.raises(ValueError):load_config(path)
+
+
+def test_disconnect_retry_recovers_and_reloads_rotated_credentials(tmp_path, monkeypatch, caplog):
+    path = tmp_path / "agent.json"
+    first, second = "a" * 64, "b" * 64
+    config = {"server": "https://lab.example:20443", "device_id": "mac", "token": first, "certificate": "cert.pem", "allowed_git_paths": []}
+    path.write_text(json.dumps(config));path.chmod(0o600)
+    used, delays = [], []
+    class StopLoop(Exception):pass
+    class FakeReporter:
+        def __init__(self, current):self.current = current
+        def send_once(self):
+            used.append(self.current["token"])
+            if self.current["token"] == first:raise urllib.error.URLError("network unavailable: " + first)
+            return 30
+    def sleep(delay):
+        delays.append(delay)
+        if len(delays) == 1:path.write_text(json.dumps({**config, "token": second}))
+        else:raise StopLoop()
+    monkeypatch.setattr("backend.hcc.mac_agent.Reporter", FakeReporter)
+    monkeypatch.setattr("backend.hcc.mac_agent.time.sleep", sleep)
+    monkeypatch.setattr("backend.hcc.mac_agent.os.umask", lambda mode: 0o077)
+    with pytest.raises(StopLoop):run(path)
+    assert used == [first, second] and delays == [5, 30]
+    assert "已上报" in caplog.text and first not in caplog.text and second not in caplog.text
 
 
 def test_reporter_checks_certificate_and_does_not_forward_credentials_on_redirect(tmp_path):
