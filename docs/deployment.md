@@ -18,7 +18,7 @@
 
 - 部署根目录：`/home/hemu/apps/homelab-control-center`；源码位于 `source/`，数据位于 `data/`，SSH / 管理员凭据位于 `config/`，TLS 文件位于 `tls/`。
 - Compose 项目名 `hemu-homelab`，使用 `compose.ssh.yaml`、`compose.proxy.yaml`、`compose.public.yaml` 三份配置合并。应用容器 `hemu-homelab-app-1`，HTTPS 容器 `hemu-homelab-https-1`。
-- 应用镜像 `hemu-hcc:a66342c`，HTTPS 镜像 `hemu-hcc-https:selfsigned-20443`。HTTPS 镜像基于官方 Caddy，去掉二进制低端口 file capability，以兼容容器丢弃全部 capabilities 的设置。
+- 应用镜像 `hemu-hcc:b395ef1`，HTTPS 镜像 `hemu-hcc-https:selfsigned-20443`。HTTPS 镜像基于官方 Caddy，去掉二进制低端口 file capability，以兼容容器丢弃全部 capabilities 的设置。
 - 应用仅发布 `127.0.0.1:18000`；HTTPS 使用 `network_mode: host`，直接监听主机 `0.0.0.0:20443` 并转发到该回环端口。`compose.public.yaml` 用于 Linux 主机部署，HTTPS 不再配置 Docker `ports`。仅启用 HTTP/1.1、HTTP/2，不需要 UDP 映射。
 - 应用运行 UID/GID 10001；应用与 HTTPS 均为只读根文件系统、丢弃全部 capabilities、禁止提权，SSH 凭据与 TLS 文件分别只读挂载，不挂载宿主 Docker socket。
 - 应用凭据与数据目录 0700、私密文件 0600，归 UID/GID 10001 所有；TLS 目录 0700、证书和私钥 0600，归 HTTPS 容器 UID 0 所有。
@@ -28,7 +28,7 @@
 当前 `source/.env` 的非秘密配置包括：
 
 ```dotenv
-HCC_IMAGE=hemu-hcc:a66342c
+HCC_IMAGE=hemu-hcc:b395ef1
 HCC_HTTPS_IMAGE=hemu-hcc-https:selfsigned-20443
 HCC_CONFIG_PATH=/home/hemu/apps/homelab-control-center/config
 HCC_DATA_PATH=/home/hemu/apps/homelab-control-center/data
@@ -41,6 +41,20 @@ HCC_POLL_SECONDS=30
 ```
 
 `HCC_HTTPS_PORT` 控制 ThinkBook 的监听端口，`HCC_PUBLIC_BIND_ADDRESS` 控制绑定地址，`HCC_HTTP_PORT` 默认 18000，同时用于应用回环发布端口与 HTTPS 上游。`HCC_PUBLIC_ORIGIN` 必须对应浏览器实际使用的完整 HTTPS Origin。如果路由器的外部端口不同，需要相应修改 Origin，而不是假定内外端口相同。
+
+## 已接入的项目监控
+
+2026-11-04 已在 ThinkBook 设备配置中接入：
+
+| 类型 | 目标 | 验证方式 |
+| --- | --- | --- |
+| Git | `/home/hemu/Projects/digital-life-os` | 只读采集分支、工作区、最近提交 |
+| 健康检查 | `http://127.0.0.1:18000/api/health` | Homelab 控制台 API，返回 200 |
+| 健康检查 | `http://127.0.0.1:8090/healthz` | Digital Life，返回 200 |
+
+健康请求在 ThinkBook 上执行，使用该机器的回环地址，无需额外公网端口。这里只验证相应 HTTP 接口，不代表完整业务链路或公网入口都正常。没有接入需要管理令牌的接口，也没有改变 Digital Life 的代码或服务配置。
+
+部署源码是 Git 归档，不含 `.git`，因此没有将 `/home/hemu/apps/homelab-control-center/source` 添加为 Git 监控目标。上述配置保存在运行数据库中，凭据仍由服务端私密文件独立管理。
 
 ## 证书
 
@@ -65,6 +79,8 @@ docker compose -f compose.ssh.yaml -f compose.proxy.yaml -f compose.public.yaml 
 构建新镜像后，更新 `.env` 中对应的镜像标签，再用同样三份 Compose 配置执行 `up -d --no-build`。修改 Caddyfile 或更新 TLS 文件后，用同样三份配置执行 `restart https`。保留部署根目录的 `data/`、`config/`、`tls/`，不要重新覆盖在线数据库。
 
 完整备份使用 SQLite 在线 backup API；编辑迁移目标后，关闭数据库连接并完成 checkpoint，再传输单个数据库文件。设置页面导出仅含设备配置，不含凭据；恢复会清空采样。密钥、密码和 TLS 私钥需独立保护，均不进入 Git、构建上下文或镜像。
+
+本次更新前已在宿主机 `data/backups/` 创建完整 SQLite 备份，文件权限 0600，完整性检查为 `ok`。接入后核对两台设备的全部采样数量和最早时间，历史保留；当前尚未配置定时备份。
 
 ## SSH-only 应急回退
 
