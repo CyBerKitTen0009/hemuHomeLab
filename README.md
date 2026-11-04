@@ -1,6 +1,6 @@
 # Homelab Control Center
 
-面向个人 Homelab 的可运行 Web 控制台。SvelteKit 3 / Svelte 5 / TypeScript 前端，FastAPI / AsyncSSH 后端，SQLite 存储，默认深色主题，支持手机布局。
+面向个人 Homelab 的可运行 Web 控制台。SvelteKit 3 / Svelte 5 / TypeScript 前端，FastAPI / AsyncSSH 后端，SQLite 存储，采用 Apple 风格的系统字体、浅色界面与分组导航，支持深色主题和手机布局。
 
 已确认的第一阶段范围：**只读监控，先在 Mac 本地验证，内置单管理员登录**。2026-11-03 已使用用户提供的专用密钥连接 ThinkBook，完成真实系统指标、Docker、systemd 与日志验证；主机密钥来自本机已存在的精确主机 / 端口信任记录。
 
