@@ -198,15 +198,19 @@ def create_app(settings: Settings | None = None):
     @app.put("/api/devices/{device_id}")
     async def update_device(device_id: str, data: DeviceInput, request: Request):
         session(request, mutation=True)
-        device_or_404(device_id)
+        previous = device_or_404(device_id)
         validate_jump(app.state.db, data, device_id)
         dependents = [item for item in app.state.db.devices() if item.get("jump_device_id") == device_id]
         if dependents and data.mode != "ssh":
             raise HTTPException(409, "此设备仍被用作 SSH 跳板")
-        app.state.db.put_device(device_id, data.model_dump())
-        with app.state.db.connect() as conn:
-            conn.execute("DELETE FROM snapshots WHERE device_id=?", (device_id,))
-            conn.execute("DELETE FROM samples WHERE device_id=?", (device_id,))
+        config = data.model_dump()
+        connection_fields = ("host", "port", "username", "mode", "credential_ref", "jump_device_id")
+        connection_changed = any(previous.get(field) != config.get(field) for field in connection_fields)
+        app.state.db.put_device(device_id, config)
+        if connection_changed:
+            with app.state.db.connect() as conn:
+                conn.execute("DELETE FROM snapshots WHERE device_id=?", (device_id,))
+                conn.execute("DELETE FROM samples WHERE device_id=?", (device_id,))
         app.state.db.audit("device_updated", device_id, data.name)
         return {**app.state.db.device(device_id), "snapshot": await refresh(app, app.state.db.device(device_id))}
 

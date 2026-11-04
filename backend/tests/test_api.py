@@ -77,6 +77,33 @@ def test_metrics_history_and_demo_labels(auth):
     assert len(history) == 2 and history[0]["timestamp"] <= history[1]["timestamp"]
 
 
+def test_monitoring_configuration_updates_preserve_history(auth):
+    device = auth.get("/api/devices").json()[0]
+    endpoint = f"/api/devices/{device['id']}"
+    before = auth.get(endpoint + "/history").json()
+    config = DeviceInput(**device).model_dump()
+    config.update(name="Renamed", git_paths=["/srv/project"], health_targets=[{"name": "API", "url": "http://127.0.0.1:8080/health"}])
+    response = auth.put(endpoint, json=config)
+    assert response.status_code == 200
+    assert response.json()["git_paths"] == ["/srv/project"]
+    after = auth.get(endpoint + "/history").json()
+    assert after[:len(before)] == before
+    assert len(after) == len(before) + 1
+
+
+def test_connection_change_does_not_keep_previous_machine_metrics(auth):
+    device = auth.get("/api/devices").json()[0]
+    endpoint = f"/api/devices/{device['id']}"
+    assert auth.get(endpoint + "/history").json()
+    config = DeviceInput(**device).model_dump()
+    config.update(mode="ssh", host="different-machine.example")
+    response = auth.put(endpoint, json=config)
+    assert response.status_code == 200
+    assert response.json()["snapshot"]["error"]["code"] == "ssh_disabled"
+    assert "metrics" not in response.json()["snapshot"]
+    assert auth.get(endpoint + "/history").json() == []
+
+
 def test_logs_allow_only_discovered_targets_and_filter(auth):
     root = "/api/devices/demo-thinkbook/logs"
     assert auth.get(root, params={"source": "container", "target": "immich-server"}).status_code == 200
