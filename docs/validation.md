@@ -9,7 +9,7 @@ SSH 集成测试仅使用本机回环地址临时 SSH 服务：专用 Ed25519 �
 ## 最终结果
 
 - 后端：2026-11-04 运行 `python -m pytest -q`，**39 passed**；随后补充断网恢复与凭据重新加载回归，`backend/tests/test_mac_agent.py` 定向运行 **4 passed**。有 1 条 Starlette 关于测试客户端 `httpx` 的上游弃用提示，不影响当前测试结果。
-- 前端：`npm run check`，**0 errors / 0 warnings**；`npm run build` 成功。最终部署镜像 `hemu-hcc:4c5da3f` 在 ThinkBook 上再次完成类型检查与构建，应用健康。
+- 前端：`npm run check`，**0 errors / 0 warnings**；`npm run build` 成功。最终部署镜像 `hemu-hcc:99944fc` 在 ThinkBook 上再次完成类型检查与构建，应用健康。
 - Compose：使用占位 HTTPS Origin 执行 `docker compose config --quiet` 通过；占位域名没有进行连接或部署。
 - 备份：在线备份演示数据库，再恢复到临时数据库；完整性检查为 `ok`，3 台原始模拟设备保留，登录会话数为 0。
 - 浏览器：实际构建版本由 FastAPI 提供，验证登录、设备总览与资源趋势、Docker 镜像 / Compose、异常 systemd 服务直达 journal、日志 ERROR 过滤、Git 状态、设备新增与编辑、审计记录、明暗主题。
@@ -95,3 +95,13 @@ SSH 集成测试仅使用本机回环地址临时 SSH 服务：专用 Ed25519 �
 - 最终镜像 `hemu-hcc:4c5da3f` 仅重建本项目应用，HTTPS 容器继续运行；Mac 无需重新注册即可继续上报。Linux 镜像未安装仅供 Mac 使用的 psutil。
 - 公网浏览器核验三台真实设备：ThinkBook 与 Mac 在线，NAS 关机显示连接异常并标识“上次数据”；Mac Git 页面展示全部 5 个仓库的分支、提交与变更数量。截图为 `artifacts/mac-live-overview.png`、`artifacts/mac-live-git.png`。临时预览服务与测试页面已关闭，正式服务保持运行。
 - Windows 尚未开机，未创建伪装成真实设备的记录。公共 Wi-Fi 登录页或封锁 20443 的网络可能暂时阻断上报，网络恢复后采集服务继续重试。
+
+## 2026-11-04 Apple 风格前端重写
+
+- 按用户要求重写整套样式：系统字体、浅灰背景、白色圆角分组、蓝色交互色、分组侧栏、分段图表控件；浅色为默认，深色主题独立设计。登录页改为居中表单，支持显示 / 隐藏密码；设备、Docker、系统服务、Git、日志、健康检查、设置与弹窗采用统一控件。
+- 总览标题与页面说明简化，Mac 总览显示近期项目；离线设备保留“上次数据”与弱化的资源进度条，异常状态不依赖颜色单独表达。手机加入搜索入口、导航遮罩及更大的触控区域；收起导航时不进入可访问树，Escape 可关闭导航和搜索。
+- 独立预览数据库验证登录、主题切换、设备切换、Mac 配置弹窗、Git 筛选、手机搜索与导航、Docker 镜像表格、日志读取 / 级别过滤、设置与审计。桌面 1440 × 1000、手机 390 × 844 检查通过；手机页面滚动宽度与可用视口宽度一致，表格在容器内横向滚动。
+- 本机与远端 Docker 构建均完成 `npm run check`（0 errors / 0 warnings）及 `npm run build`。无后端或依赖变更，本轮未重复执行后端测试。
+- 更新前使用 SQLite 在线 backup API 生成权限 0600 的完整备份。只重建应用至 `hemu-hcc:99944fc`，健康检查通过，HTTPS 容器继续运行。更新后数据库完整性为 `ok`，原设备最早采样时间及全部历史保留，上报令牌记录数未变，Mac 无需重新注册。
+- 正式公网浏览器核验新版总览、Mac 近期项目、全部 5 个 Git 仓库及筛选空状态 / 清除筛选；控制台没有 error / warn。ThinkBook 与 Mac 持续在线，NAS 按用户说明关机；实际 HTTPS API 登录和设备读取成功。
+- 正式页面截图：`artifacts/apple-ui-live-overview.png`、`artifacts/apple-ui-live-git.png`。预览实例已与正式数据库隔离，不会将模拟数据写入正式部署。

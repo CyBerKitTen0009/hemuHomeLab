@@ -18,7 +18,7 @@
 
 - 部署根目录：`/home/hemu/apps/homelab-control-center`；源码位于 `source/`，数据位于 `data/`，SSH / 管理员凭据位于 `config/`，TLS 文件位于 `tls/`。
 - Compose 项目名 `hemu-homelab`，使用 `compose.ssh.yaml`、`compose.proxy.yaml`、`compose.public.yaml` 三份配置合并。应用容器 `hemu-homelab-app-1`，HTTPS 容器 `hemu-homelab-https-1`。
-- 应用镜像 `hemu-hcc:4c5da3f`，HTTPS 镜像 `hemu-hcc-https:selfsigned-20443`。HTTPS 镜像基于官方 Caddy，去掉二进制低端口 file capability，以兼容容器丢弃全部 capabilities 的设置。
+- 应用镜像 `hemu-hcc:99944fc`，HTTPS 镜像 `hemu-hcc-https:selfsigned-20443`。HTTPS 镜像基于官方 Caddy，去掉二进制低端口 file capability，以兼容容器丢弃全部 capabilities 的设置。
 - 应用仅发布 `127.0.0.1:18000`；HTTPS 使用 `network_mode: host`，直接监听主机 `0.0.0.0:20443` 并转发到该回环端口。`compose.public.yaml` 用于 Linux 主机部署，HTTPS 不再配置 Docker `ports`。仅启用 HTTP/1.1、HTTP/2，不需要 UDP 映射。
 - 应用运行 UID/GID 10001；应用与 HTTPS 均为只读根文件系统、丢弃全部 capabilities、禁止提权，SSH 凭据与 TLS 文件分别只读挂载，不挂载宿主 Docker socket。
 - 应用凭据与数据目录 0700、私密文件 0600，归 UID/GID 10001 所有；TLS 目录 0700、证书和私钥 0600，归 HTTPS 容器 UID 0 所有。
@@ -29,7 +29,7 @@
 当前 `source/.env` 的非秘密配置包括：
 
 ```dotenv
-HCC_IMAGE=hemu-hcc:4c5da3f
+HCC_IMAGE=hemu-hcc:99944fc
 HCC_HTTPS_IMAGE=hemu-hcc-https:selfsigned-20443
 HCC_CONFIG_PATH=/home/hemu/apps/homelab-control-center/config
 HCC_DATA_PATH=/home/hemu/apps/homelab-control-center/data
@@ -42,6 +42,8 @@ HCC_POLL_SECONDS=30
 ```
 
 `HCC_HTTPS_PORT` 控制 ThinkBook 的监听端口，`HCC_PUBLIC_BIND_ADDRESS` 控制绑定地址，`HCC_HTTP_PORT` 默认 18000，同时用于应用回环发布端口与 HTTPS 上游。`HCC_PUBLIC_ORIGIN` 必须对应浏览器实际使用的完整 HTTPS Origin。如果路由器的外部端口不同，需要相应修改 Origin，而不是假定内外端口相同。
+
+2026-11-04 已上线 Apple 风格的前端重写：默认浅色，保留独立深色主题；登录、分组导航、设备卡片、图表、数据表格与弹窗统一更新。浏览器使用 `hcc-appearance` 保存新版主题选择；旧版主题偏好不沿用。部署只更新应用镜像，HTTPS 容器、采集方式、设备凭据与历史数据继续使用原配置。
 
 ## 已接入的项目监控
 
