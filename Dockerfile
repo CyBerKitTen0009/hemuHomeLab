@@ -8,7 +8,7 @@ RUN npm run check && npm run build
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS runtime
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 UV_CACHE_DIR=/tmp/uv-cache
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock LICENSE ./
 RUN uv sync --frozen --no-dev && groupadd --gid 10001 hcc && useradd --uid 10001 --gid 10001 --no-create-home hcc
 COPY backend/ backend/
 COPY --from=frontend /build/build /app/frontend/build

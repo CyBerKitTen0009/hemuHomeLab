@@ -12,7 +12,7 @@
 
 **控制台已常驻部署到 ThinkBook，并启用独立自签名 HTTPS。** Mac 离开家庭网络或关机后，ThinkBook 仍会采集家庭内的设备。访问地址为 [ThinkBook 控制台](https://ssh.hemu-server.top:20443)，沿用原管理员账户和密码，无需启动 Mac 后端；首次浏览器访问会提示证书不受信任，需要用户手动确认。用户已通过手机流量确认登录页可达；当前公网页面已验证 ThinkBook 与 Mac 在线，NAS 按用户说明关机并保留上次数据。部署位置、端口映射和维护方式见 [部署说明](docs/deployment.md)。
 
-项目私人仓库：[CyBerKitTen0009/hemuHomeLab](https://github.com/CyBerKitTen0009/hemuHomeLab)。新检出环境仍默认关闭真实 SSH；凭据和本机设备数据库不会随仓库分发。
+开源仓库：[CyBerKitTen0009/hemuHomeLab](https://github.com/CyBerKitTen0009/hemuHomeLab)。新检出环境仍默认关闭真实 SSH；凭据和本机设备数据库不会随仓库分发。
 
 ## 本地运行
 
@@ -95,3 +95,9 @@ python3 scripts/backup.py restore /absolute/path/homelab-backup.sqlite3 --confir
 ```
 
 SSH 凭据与管理员密码应独立保管。日志会对常见凭据格式做脱敏，但不能保证识别所有自定义秘密格式；请只向可信管理员开放控制台。
+
+## 许可证
+
+Copyright (C) 2026 CyBerKitTen0009.
+
+本项目采用 **GNU General Public License v3.0 only（`GPL-3.0-only`）**，完整条款见 [LICENSE](LICENSE)。本项目不提供担保；使用、修改和再分发须遵循该许可证。第三方依赖保留各自的许可证与版权声明。

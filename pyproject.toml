@@ -3,6 +3,8 @@ name = "homelab-control-center"
 version = "0.1.0"
 description = "Read-only SSH observability for a personal homelab"
 requires-python = ">=3.12"
+license = "GPL-3.0-only"
+license-files = ["LICENSE"]
 dependencies = [
   "fastapi>=0.115,<1",
   "uvicorn[standard]>=0.34,<1",
